@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Classroom Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --ink:#16254F; --ink-2:#4A5578; --ink-3:#7C86A2;
+  --paper:#ECF0F6; --card:#FFFFFF; --line:#D8DEE9; --line-2:#C3CBDA;
+  --brand:#1E3A8A; --brand-soft:#E3E9F8;
+  --ok:#11845A; --ok-soft:#D9F1E6;
+  --warn:#B06D10; --warn-soft:#FBEBD3;
+  --bad:#C2412D; --bad-soft:#F8DED8;
+  --marker:#16254F;
+  --shadow:0 1px 0 rgba(22,37,79,.04), 0 8px 24px -12px rgba(22,37,79,.18);
+  --r:16px;
+  --f-display:"Bricolage Grotesque", "Plus Jakarta Sans", system-ui, sans-serif;
+  --f-body:"Plus Jakarta Sans", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ink:#E7ECF7; --ink-2:#A9B3CC; --ink-3:#7883A0;
+    --paper:#0E1530; --card:#16204A; --line:#26326088; --line-2:#34417A;
+    --brand:#8FA8F0; --brand-soft:#22306A;
+    --ok:#4CCB97; --ok-soft:#17433A; --warn:#F0B454; --warn-soft:#4A3718; --bad:#F2846F; --bad-soft:#4B2228;
+    --marker:#E7ECF7; --shadow:0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ink:#E7ECF7; --ink-2:#A9B3CC; --ink-3:#7883A0;
+  --paper:#0E1530; --card:#16204A; --line:#26326088; --line-2:#34417A;
+  --brand:#8FA8F0; --brand-soft:#22306A;
+  --ok:#4CCB97; --ok-soft:#17433A; --warn:#F0B454; --warn-soft:#4A3718; --bad:#F2846F; --bad-soft:#4B2228;
+  --marker:#E7ECF7; --shadow:0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased}
+button,select,input{font:inherit; color:inherit}
+:focus-visible{outline:3px solid var(--brand); outline-offset:2px; border-radius:6px}
+.wrap{max-width:1240px; margin:0 auto; padding:0 20px 56px}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+
+/* ---------- top bar ---------- */
+.top{display:flex; align-items:center; gap:14px; padding:18px 0; flex-wrap:wrap}
+.brand{display:flex; align-items:center; gap:10px; margin-right:auto}
+.brand-mark{width:34px; height:34px; border-radius:10px; background:var(--brand); display:grid; place-items:center; color:#fff}
+.brand h1{font-family:var(--f-display); font-weight:700; font-size:18px; margin:0; letter-spacing:-.01em}
+.brand small{display:block; color:var(--ink-3); font-size:12px; line-height:1.2}
+.pill{display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border-radius:999px; background:var(--card); border:1px solid var(--line); font-size:13px; white-space:nowrap}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--ink-3)}
+.dot.live{background:var(--ok); box-shadow:0 0 0 0 var(--ok); animation:pulse 2s infinite}
+.dot.stale{background:var(--warn)} .dot.off{background:var(--bad)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:0 0 0 0 transparent}}
+.select{appearance:none; background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%237C86A2' stroke-width='1.6'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 12px center; border:1px solid var(--line); border-radius:999px; padding:7px 34px 7px 14px; font-size:13px; cursor:pointer}
+.btn{display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--card); border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer}
+.btn:hover{border-color:var(--line-2)}
+.btn.primary{background:var(--brand); border-color:var(--brand); color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#0E1530}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#0E1530}}
+.icon-btn{width:36px; height:36px; padding:0; justify-content:center}
+
+.banner{display:none; margin:0 0 16px; padding:12px 16px; border-radius:12px; background:var(--warn-soft); color:var(--ink); font-size:14px; border:1px solid color-mix(in srgb,var(--warn) 30%,transparent)}
+.banner.show{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+.banner.err{background:var(--bad-soft); border-color:color-mix(in srgb,var(--bad) 30%,transparent)}
+
+/* ---------- hero: kondisi kelas sekarang ---------- */
+.hero{display:grid; grid-template-columns:1fr auto; gap:28px; align-items:end; padding:28px 30px; background:var(--card); border-radius:22px; box-shadow:var(--shadow); margin-bottom:18px; position:relative; overflow:hidden}
+.hero .eyebrow{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-3); font-weight:700; margin-bottom:10px}
+.hero h2{font-family:var(--f-display); font-weight:800; font-size:clamp(28px,4.2vw,46px); line-height:1.05; letter-spacing:-.025em; margin:0 0 12px; max-width:20ch}
+.hero h2 em{font-style:normal; color:var(--brand)}
+.hero p{margin:0; color:var(--ink-2); max-width:60ch}
+.score{text-align:right}
+.score .num{font-family:var(--f-display); font-weight:800; font-size:clamp(56px,8vw,92px); line-height:.9; letter-spacing:-.04em}
+.score .lbl{font-size:13px; color:var(--ink-3); margin-top:6px}
+.score .cat{display:inline-block; margin-top:8px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700}
+.cat.ok{background:var(--ok-soft); color:var(--ok)} .cat.warn{background:var(--warn-soft); color:var(--warn)} .cat.bad{background:var(--bad-soft); color:var(--bad)} .cat.na{background:var(--brand-soft); color:var(--ink-2)}
+
+/* ---------- metric cards with "penggaris ideal" ---------- */
+.grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px}
+.card{background:var(--card); border-radius:var(--r); box-shadow:var(--shadow); padding:18px 20px}
+.metric .head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px}
+.metric .name{font-weight:700; font-size:14px}
+.metric .src{font-size:11.5px; color:var(--ink-3)}
+.chip{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px}
+.chip.ok{background:var(--ok-soft); color:var(--ok)} .chip.warn{background:var(--warn-soft); color:var(--warn)} .chip.bad{background:var(--bad-soft); color:var(--bad)} .chip.na{background:var(--brand-soft); color:var(--ink-3)}
+.metric .val{font-family:var(--f-display); font-weight:700; font-size:40px; letter-spacing:-.03em; line-height:1.1; margin:6px 0 2px}
+.metric .val span{font-family:var(--f-body); font-size:15px; font-weight:600; color:var(--ink-3); margin-left:4px; letter-spacing:0}
+.metric .note{font-size:12.5px; color:var(--ink-2); min-height:19px}
+
+.ruler{position:relative; height:46px; margin-top:12px}
+.ruler .track{position:absolute; left:0; right:0; top:14px; height:10px; border-radius:6px; background:repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 10%); background-color:color-mix(in srgb,var(--line) 45%,transparent)}
+.ruler .zone{position:absolute; top:14px; height:10px; background:var(--ok); opacity:.85; border-radius:3px}
+.ruler .needle{position:absolute; top:0; width:0; transform:translateX(-50%); transition:left .8s cubic-bezier(.2,.8,.2,1)}
+.ruler .needle::before{content:""; position:absolute; left:-7px; top:0; border:7px solid transparent; border-top:9px solid var(--marker)}
+.ruler .needle::after{content:""; position:absolute; left:-1px; top:9px; width:2px; height:20px; background:var(--marker); border-radius:2px}
+.ruler .tick{position:absolute; top:30px; transform:translateX(-50%); font-family:var(--f-mono); font-size:10.5px; color:var(--ink-3)}
+.ruler .tick.edge{color:var(--ok); font-weight:600}
+.ruler .out{position:absolute; top:-2px; font-size:11px; font-weight:700; color:var(--bad)}
+
+.presence .big{font-family:var(--f-display); font-weight:800; font-size:34px; letter-spacing:-.02em; margin:10px 0 4px}
+.presence .big.on{color:var(--ok)} .presence .big.offc{color:var(--ink-3)}
+.beats{display:flex; gap:3px; align-items:flex-end; height:34px; margin-top:12px}
+.beats i{flex:1; background:var(--brand-soft); border-radius:3px; min-height:3px}
+.beats i.on{background:var(--brand)}
+
+/* ---------- charts ---------- */
+.section-head{display:flex; align-items:end; justify-content:space-between; gap:12px; margin:30px 0 12px; flex-wrap:wrap}
+.section-head h3{font-family:var(--f-display); font-weight:700; font-size:22px; margin:0; letter-spacing:-.015em}
+.section-head p{margin:2px 0 0; color:var(--ink-3); font-size:13px}
+.seg{display:inline-flex; background:var(--card); border:1px solid var(--line); border-radius:999px; padding:3px}
+.seg button{border:0; background:none; padding:6px 14px; border-radius:999px; font-size:13px; font-weight:600; color:var(--ink-2); cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--brand); color:#fff}
+:root[data-theme="dark"] .seg button[aria-pressed="true"]{color:#0E1530}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#0E1530}}
+.charts{display:grid; grid-template-columns:repeat(2,1fr); gap:14px}
+.chart-card h4{margin:0; font-size:14px; font-weight:700}
+.chart-card .sub{font-size:12px; color:var(--ink-3); margin-bottom:8px}
+.chart-box{position:relative; height:220px}
+.empty{display:grid; place-items:center; height:100%; color:var(--ink-3); font-size:13px; text-align:center; padding:0 20px}
+
+/* ---------- kesehatan alat ---------- */
+.health{display:grid; grid-template-columns:1.3fr 1fr; gap:14px}
+.srow{display:grid; grid-template-columns:110px 1fr auto; gap:12px; align-items:center; padding:12px 0; border-top:1px solid var(--line)}
+.srow:first-of-type{border-top:0}
+.srow .nm{font-weight:700}
+.srow .nm small{display:block; font-weight:500; color:var(--ink-3); font-family:var(--f-mono); font-size:11px}
+.srow .detail{font-size:12.5px; color:var(--ink-2)}
+.volt{margin-bottom:6px}
+.volt .vh{display:flex; justify-content:space-between; align-items:baseline}
+.volt .vv{font-family:var(--f-display); font-weight:700; font-size:28px; letter-spacing:-.02em}
+.kv{display:grid; grid-template-columns:repeat(2,1fr); gap:10px 18px; margin-top:14px; padding-top:14px; border-top:1px solid var(--line)}
+.kv div{font-size:12px; color:var(--ink-3)}
+.kv b{display:block; font-family:var(--f-mono); font-size:13.5px; color:var(--ink); font-weight:600}
+
+/* ---------- table ---------- */
+.table-wrap{overflow:auto; max-height:420px}
+table{border-collapse:collapse; width:100%; font-size:13px}
+th,td{padding:9px 12px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky; top:0; background:var(--card); font-size:11.5px; color:var(--ink-3); text-transform:uppercase; letter-spacing:.05em; font-weight:700}
+td{font-family:var(--f-mono)}
+tr:hover td{background:color-mix(in srgb,var(--brand-soft) 50%,transparent)}
+
+/* ---------- dialog ---------- */
+dialog{border:0; border-radius:20px; padding:0; width:min(520px, calc(100vw - 32px)); background:var(--card); color:var(--ink); box-shadow:0 30px 80px -20px rgba(0,0,0,.45)}
+dialog::backdrop{background:rgba(14,21,48,.45)}
+.dlg{padding:24px}
+.dlg h3{font-family:var(--f-display); margin:0 0 4px; font-size:22px}
+.dlg p{margin:0 0 16px; color:var(--ink-2); font-size:13.5px}
+.field{display:block; margin-bottom:12px}
+.field span{display:block; font-size:12.5px; font-weight:700; margin-bottom:5px}
+.field input{width:100%; padding:10px 12px; border:1px solid var(--line-2); border-radius:10px; background:var(--paper)}
+.dlg .actions{display:flex; gap:8px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap}
+.hint{font-size:12px; color:var(--ink-3)}
+
+footer{margin-top:36px; color:var(--ink-3); font-size:12px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap}
+
+@media (max-width:980px){ .grid{grid-template-columns:repeat(2,1fr)} .charts,.health{grid-template-columns:1fr} }
+@media (max-width:640px){
+  .wrap{padding:0 16px 40px}
+  .grid{grid-template-columns:1fr}
+  .hero{grid-template-columns:1fr; padding:22px}
+  .score{text-align:left}
+  .srow{grid-template-columns:90px 1fr; } .srow .chip{grid-column:2; justify-self:start}
+  .top{gap:8px}
+}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important; transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><path d="M9 20v-5h6v5"/></svg>
+      </div>
+      <div><h1>Smart Classroom Monitor</h1><small>Kelompok 5 · pemantauan kondisi kelas</small></div>
+    </div>
+    <span class="pill" id="livePill"><span class="dot" id="liveDot"></span><span id="liveText">Memuat…</span></span>
+    <label class="sr" for="deviceSel" style="position:absolute;left:-9999px">Pilih alat</label>
+    <select class="select" id="deviceSel" aria-label="Pilih alat"></select>
+    <button class="btn icon-btn" id="themeBtn" aria-label="Ganti tema terang atau gelap" title="Ganti tema">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+    <button class="btn" id="settingsBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      Koneksi
+    </button>
+  </header>
+
+  <div class="banner" id="banner" role="status"></div>
+
+  <section class="hero" aria-live="polite">
+    <div>
+      <div class="eyebrow" id="heroEyebrow">Kondisi kelas sekarang</div>
+      <h2 id="heroTitle">Menunggu data dari alat</h2>
+      <p id="heroText">Begitu alat mengirim data pertama, ringkasan kondisi kelas muncul di sini.</p>
+    </div>
+    <div class="score">
+      <div class="num mono" id="scoreNum">–</div>
+      <div class="lbl">Skor kenyamanan (0–100)</div>
+      <div class="cat na" id="scoreCat">Belum ada data</div>
+    </div>
+  </section>
+
+  <section class="grid" id="metrics" aria-label="Nilai sensor terbaru"></section>
+
+  <div class="section-head">
+    <div><h3>Riwayat</h3><p id="histInfo">Area hijau di grafik adalah rentang nilai ideal.</p></div>
+    <div class="seg" role="group" aria-label="Rentang waktu" id="rangeSeg">
+      <button data-h="1" aria-pressed="true">1 jam</button>
+      <button data-h="6" aria-pressed="false">6 jam</button>
+      <button data-h="24" aria-pressed="false">24 jam</button>
+      <button data-h="168" aria-pressed="false">7 hari</button>
+    </div>
+  </div>
+  <section class="charts">
+    <div class="card chart-card"><h4>Suhu &amp; kelembapan</h4><div class="sub">°C (kiri) · % RH (kanan) · SHT40</div><div class="chart-box"><canvas id="cTemp"></canvas></div></div>
+    <div class="card chart-card"><h4>Cahaya di meja</h4><div class="sub">lux · BH1750</div><div class="chart-box"><canvas id="cLux"></canvas></div></div>
+    <div class="card chart-card"><h4>Kualitas udara</h4><div class="sub">eCO2 ppm (kiri) · TVOC ppb (kanan) · SGP30</div><div class="chart-box"><canvas id="cAir"></canvas></div></div>
+    <div class="card chart-card"><h4>Kehadiran</h4><div class="sub">jumlah gerakan PIR per kiriman · garis = kelas terisi</div><div class="chart-box"><canvas id="cPres"></canvas></div></div>
+  </section>
+
+  <div class="section-head">
+    <div><h3>Kesehatan alat</h3><p>Status tiap sensor, tegangan jalur daya, dan koneksi.</p></div>
+  </div>
+  <section class="health">
+    <div class="card" id="sensorList"></div>
+    <div class="card">
+      <div id="volts"></div>
+      <div class="kv" id="devInfo"></div>
+    </div>
+  </section>
+  <section class="charts" style="margin-top:14px">
+    <div class="card chart-card"><h4>Tegangan jalur daya</h4><div class="sub">volt · area hijau = rentang aman</div><div class="chart-box"><canvas id="cVolt"></canvas></div></div>
+    <div class="card chart-card"><h4>Sinyal WiFi</h4><div class="sub">dBm · makin mendekati 0 makin kuat</div><div class="chart-box"><canvas id="cRssi"></canvas></div></div>
+  </section>
+
+  <div class="section-head">
+    <div><h3>Data tersimpan</h3><p id="tableInfo">50 baris terbaru dari rentang yang dipilih.</p></div>
+    <button class="btn primary" id="csvBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>
+      Unduh CSV
+    </button>
+  </div>
+  <section class="card" style="padding:6px 8px">
+    <div class="table-wrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <footer>
+    <span>Nilai ideal mengacu Permenkes No. 48 Tahun 2016. TVOC memakai acuan umum ≤ 300 ppb.</span>
+    <span id="footInfo"></span>
+  </footer>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" method="dialog" id="dlgForm">
+    <h3>Koneksi Supabase</h3>
+    <p>Isi dengan data dari Supabase: Project Settings → API. Tersimpan di browser ini saja.</p>
+    <label class="field"><span>Project URL</span><input id="fUrl" placeholder="https://xxxx.supabase.co" autocomplete="off"></label>
+    <label class="field"><span>Anon public key</span><input id="fKey" placeholder="eyJhbGciOi…" autocomplete="off"></label>
+    <label class="field"><span>Nama tabel</span><input id="fTable" placeholder="sensor_readings" autocomplete="off"></label>
+    <div class="hint">Kosongkan Project URL untuk melihat mode demo dengan data contoh.</div>
+    <div class="actions">
+      <button class="btn" value="cancel" type="submit">Batal</button>
+      <button class="btn" id="demoBtn" type="button">Pakai mode demo</button>
+      <button class="btn primary" id="saveBtn" type="button">Simpan dan sambungkan</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* =====================================================================
+   PENGATURAN BAWAAN
+   Kalau website ini di-hosting (misalnya Vercel/Netlify) dan dipakai
+   bersama, isi URL dan anon key di sini supaya tidak perlu diisi lagi.
+   ===================================================================== */
+const CONFIG = {
+  url: "https://scartiyrsfygnowigers.supabase.co",                 // contoh: "https://xxxx.supabase.co"
+  key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjYXJ0aXlyc2Z5Z25vd2lnZXJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1NTEwNjYsImV4cCI6MjExMDEyNzA2Nn0.LdzqiXocz35WGoy14lqBLzYJSpWqnomnPeKUTqkP22g",                 // anon public key
+  table: "sensor_readings",
+  kirimDetik: 10,          // samakan dengan INTERVAL_KIRIM_MS di firmware (dalam detik)
+  refreshDetik: 5          // seberapa sering dashboard mengecek data baru
+};
+
+/* ---------- nilai ideal & skala penggaris ---------- */
+const METRICS = [
+  { key:"suhu", name:"Suhu", unit:"°C", src:"SHT40", dec:1, scale:[18,34], ideal:[23,26], warnPad:1.5,
+    lo:"Terlalu sejuk", hi:"Terlalu panas", okText:"Dalam rentang nyaman" },
+  { key:"kelembapan", name:"Kelembapan", unit:"%", src:"SHT40", dec:1, scale:[20,95], ideal:[40,60], warnPad:8,
+    lo:"Udara terlalu kering", hi:"Udara terlalu lembap", okText:"Dalam rentang nyaman" },
+  { key:"lux", name:"Cahaya", unit:"lux", src:"BH1750", dec:0, scale:[0,1000], ideal:[300,500], warnPad:80,
+    lo:"Kurang terang untuk membaca", hi:"Lebih terang dari perlu", okText:"Cukup untuk membaca" },
+  { key:"eco2", name:"eCO2", unit:"ppm", src:"SGP30 · estimasi", dec:0, scale:[400,2000], ideal:[400,1000], warnPad:200,
+    lo:"", hi:"Udara mulai pengap, perlu ventilasi", okText:"Udara masih segar" },
+  { key:"tvoc", name:"TVOC", unit:"ppb", src:"SGP30", dec:0, scale:[0,1000], ideal:[0,300], warnPad:200,
+    lo:"", hi:"Banyak uap kimia di udara", okText:"Rendah" }
+];
+const RAILS = [
+  { key:"v_3v3", name:"Jalur 3,3 V", desc:"SHT40, BH1750, SGP30, OLED", scale:[2.9,3.7], ok:[3.15,3.45] },
+  { key:"v_5v",  name:"Jalur 5 V",  desc:"PIR HC-SR501 (minimal 4,5 V)", scale:[4.0,5.6], ok:[4.5,5.3] }
+];
+
+/* ---------- utilitas ---------- */
+const $ = s => document.querySelector(s);
+const fmt = (v, d=1) => (v === null || v === undefined || Number.isNaN(v)) ? "–" : Number(v).toLocaleString("id-ID",{minimumFractionDigits:d, maximumFractionDigits:d});
+const tz = "Asia/Jakarta";
+const fTime = t => new Date(t).toLocaleTimeString("id-ID",{timeZone:tz, hour:"2-digit", minute:"2-digit"});
+const fDateTime = t => new Date(t).toLocaleString("id-ID",{timeZone:tz, day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", second:"2-digit"});
+const store = {
+  get(k){ try{ return localStorage.getItem(k) }catch(e){ return null } },
+  set(k,v){ try{ localStorage.setItem(k,v) }catch(e){} }
+};
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function hexA(hex, a){
+  const h = hex.replace("#","");
+  const n = h.length === 3 ? h.split("").map(c => c+c).join("") : h.slice(0,6);
+  const r = parseInt(n.slice(0,2),16), g = parseInt(n.slice(2,4),16), b = parseInt(n.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+function ago(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  if (s < 60) return s + " dtk lalu";
+  if (s < 3600) return Math.round(s/60) + " mnt lalu";
+  if (s < 86400) return Math.round(s/3600) + " jam lalu";
+  return Math.round(s/86400) + " hari lalu";
+}
+function status(m, v){
+  if (v === null || v === undefined) return "na";
+  if (v >= m.ideal[0] && v <= m.ideal[1]) return "ok";
+  if (v >= m.ideal[0]-m.warnPad && v <= m.ideal[1]+m.warnPad) return "warn";
+  return "bad";
+}
+const STATUS_TEXT = { ok:"Ideal", warn:"Sedikit di luar", bad:"Di luar batas", na:"Tidak ada data" };
+
+/* ---------- skor kenyamanan (sama dengan laporan) ---------- */
+function partScore(v, lo, hi, zeroLo, zeroHi){
+  if (v === null || v === undefined) return null;
+  if (v >= lo && v <= hi) return 100;
+  if (v < lo) return Math.max(0, 100 * (v - zeroLo) / (lo - zeroLo));
+  return Math.max(0, 100 * (zeroHi - v) / (zeroHi - hi));
+}
+function comfort(r){
+  const parts = [
+    partScore(r.suhu, 23, 26, 21, 28),          // 0 poin kalau 2 °C di luar rentang ideal
+    partScore(r.kelembapan, 40, 60, 30, 70),    // 0 poin kalau 10 % di luar
+    partScore(r.lux, 300, 500, 150, 800),       // 0 poin di bawah 150 lux atau di atas 800 lux
+    partScore(r.eco2, 0, 1000, -1, 1400)        // 0 poin di atas 1.400 ppm
+  ].filter(x => x !== null);
+  if (!parts.length) return null;
+  return Math.round(parts.reduce((a,b)=>a+b,0) / parts.length);
+}
+
+/* =====================================================================
+   SUMBER DATA: Supabase REST atau demo
+   ===================================================================== */
+const state = { cfg:null, demo:false, device:null, hours:1, rows:[], latest:null, lastError:null };
+
+function loadCfg(){
+  return {
+    url: (store.get("sc_url") ?? CONFIG.url).replace(/\/+$/,""),
+    key: store.get("sc_key") ?? CONFIG.key,
+    table: store.get("sc_table") || CONFIG.table
+  };
+}
+
+async function sb(path){
+  const { url, key } = state.cfg;
+  const res = await fetch(`${url}/rest/v1/${path}`, { headers:{ apikey:key, Authorization:`Bearer ${key}` } });
+  if (!res.ok){
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); msg += " · " + (j.message || j.hint || JSON.stringify(j)); } catch(e){}
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+async function fetchDevices(){
+  if (state.demo) return ["kelompok5-01 (demo)"];
+  const rows = await sb(`${state.cfg.table}?select=device_id&order=waktu.desc&limit=1000`);
+  return [...new Set(rows.map(r => r.device_id))];
+}
+
+async function fetchLatest(){
+  if (state.demo) return demoNow();
+  const rows = await sb(`${state.cfg.table}?select=*&device_id=eq.${encodeURIComponent(state.device)}&order=waktu.desc&limit=1`);
+  return rows[0] || null;
+}
+
+// hanya baris yang lebih baru dari data terakhir di layar (hemat kuota egress Supabase)
+async function fetchNewer(afterIso){
+  if (state.demo){ const r = demoNow(); return new Date(r.waktu) > new Date(afterIso) ? [r] : []; }
+  return sb(`${state.cfg.table}?select=*&device_id=eq.${encodeURIComponent(state.device)}&waktu=gt.${encodeURIComponent(afterIso)}&order=waktu.asc&limit=1000`);
+}
+
+async function fetchHistory(hours){
+  if (state.demo) return demoRows(hours);
+  const from = new Date(Date.now() - hours*3600e3).toISOString();
+  const out = [];
+  const page = 1000;
+  for (let off = 0; off < 25000; off += page){
+    const rows = await sb(`${state.cfg.table}?select=*&device_id=eq.${encodeURIComponent(state.device)}&waktu=gte.${from}&order=waktu.asc&limit=${page}&offset=${off}`);
+    out.push(...rows);
+    if (rows.length < page) break;
+  }
+  return out;
+}
+
+/* ---------- data demo (bentuk sama dengan tabel Supabase) ---------- */
+function demoAt(t){
+  const h = new Date(t).getUTCHours() + 7 + new Date(t).getUTCMinutes()/60;
+  const hour = ((h % 24) + 24) % 24;
+  const kelas = (hour >= 7.5 && hour < 11.5) || (hour >= 13 && hour < 16);
+  const n = Math.sin(t/7.3e5) * 0.5 + Math.sin(t/2.1e5) * 0.3;
+  const occ = kelas ? 1 : 0;
+  const eco2 = Math.round(430 + occ * (380 + 260*Math.sin((hour%4)/4*Math.PI)) + n*40);
+  return {
+    waktu:new Date(t).toISOString(), device_id:"kelompok5-01 (demo)", ruang:"Kelas uji",
+    suhu: +(25.2 + occ*1.6 + n*0.6).toFixed(2), kelembapan:+(57 - occ*3 - n*4).toFixed(1),
+    lux: Math.max(0, Math.round((hour > 6 && hour < 18 ? 260 + 140*Math.sin((hour-6)/12*Math.PI) : 15) + occ*120 + n*30)),
+    eco2, tvoc: Math.max(0, Math.round(40 + occ*110 + n*35)),
+    raw_h2: 13550 + Math.round(n*40), raw_ethanol: 18480 + Math.round(n*60),
+    pir_gerak: occ ? Math.max(0, Math.round(2 + n*3 + Math.random()*2)) : (Math.random() < .03 ? 1 : 0),
+    ada_orang: !!occ,
+    v_3v3: +(3.29 + n*0.02).toFixed(3), v_5v: +(4.74 + n*0.05).toFixed(3),
+    sht_ok:true, bh_ok:true, sgp_ok:true, oled_ok:true, err_sht:0, err_bh:1, err_sgp:0, baca_ms:142,
+    sgp_baseline_eco2:35187, sgp_baseline_tvoc:35502, sgp_baseline_dipulihkan:true,
+    rssi: Math.round(-62 + n*6), uptime_s: Math.round((t % 864e5)/1000), free_heap: 198000 + Math.round(n*4000), fw_version:"1.0.0"
+  };
+}
+function demoRows(hours){
+  const step = CONFIG.kirimDetik * 1000 * Math.max(1, Math.round(hours/2));
+  const now = Date.now(), out = [];
+  for (let t = now - hours*3600e3; t <= now; t += step) out.push(demoAt(t));
+  return out;
+}
+function demoNow(){ return demoAt(Date.now() - 4000); }
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function rulerHTML(m, v, scale, ideal){
+  const [a,b] = scale, span = b-a;
+  const pos = x => Math.min(100, Math.max(0, (x-a)/span*100));
+  const zl = pos(ideal[0]), zr = pos(ideal[1]);
+  let needle = "", out = "";
+  if (v !== null && v !== undefined){
+    needle = `<div class="needle" style="left:${pos(v)}%"></div>`;
+    if (v < a) out = `<span class="out" style="left:0">◀ di bawah skala</span>`;
+    if (v > b) out = `<span class="out" style="right:0">di atas skala ▶</span>`;
+  }
+  const ticks = [];
+  if (ideal[0] > a) ticks.push(`<span class="tick edge" style="left:${zl}%">${ideal[0]}</span>`);
+  if (ideal[1] < b) ticks.push(`<span class="tick edge" style="left:${zr}%">${ideal[1]}</span>`);
+  if (zl > 12) ticks.push(`<span class="tick" style="left:0;transform:none">${a}</span>`);
+  if (zr < 88) ticks.push(`<span class="tick" style="right:0;left:auto;transform:none">${b}</span>`);
+  return `<div class="ruler" role="img" aria-label="${m.name} ${v ?? 'tidak ada data'}, rentang ideal ${ideal[0]} sampai ${ideal[1]}">
+    <div class="track"></div><div class="zone" style="left:${zl}%;width:${zr-zl}%"></div>${needle}${out}${ticks.join("")}</div>`;
+}
+
+function renderMetrics(r, rows){
+  const html = METRICS.map(m => {
+    const v = r ? r[m.key] : null;
+    const st = status(m, v);
+    let note = "";
+    if (st === "ok") note = m.okText;
+    else if (st === "warn") note = v < m.ideal[0] ? "Sedikit di bawah rentang ideal" : "Sedikit di atas rentang ideal";
+    else if (v !== null && v !== undefined) note = v < m.ideal[0] ? m.lo : m.hi;
+    return `<article class="card metric">
+      <div class="head"><div><div class="name">${m.name}</div><div class="src">${m.src}</div></div><span class="chip ${st}">${STATUS_TEXT[st]}</span></div>
+      <div class="val mono">${fmt(v, m.dec)}<span>${m.unit}</span></div>
+      <div class="note">${note || "&nbsp;"} · ideal ${m.ideal[0]}–${m.ideal[1]} ${m.unit}</div>
+      ${rulerHTML(m, v, m.scale, m.ideal)}
+    </article>`;
+  });
+  // kartu kehadiran
+  const recent = rows.slice(-24);
+  const maxG = Math.max(1, ...recent.map(x => x.pir_gerak || 0));
+  const beats = recent.map(x => `<i class="${x.pir_gerak ? 'on' : ''}" style="height:${8 + 92*(x.pir_gerak||0)/maxG}%"></i>`).join("");
+  const occ = r ? r.ada_orang : null;
+  html.push(`<article class="card metric presence">
+    <div class="head"><div><div class="name">Kehadiran</div><div class="src">PIR + tren eCO2</div></div>
+      <span class="chip ${occ === null ? 'na' : 'ok'}">${occ === null ? 'Tidak ada data' : (r.pir_gerak ? r.pir_gerak + ' gerakan' : 'tanpa gerakan')}</span></div>
+    <div class="big ${occ ? 'on' : 'offc'}">${occ === null ? '–' : (occ ? 'Kelas terisi' : 'Kelas kosong')}</div>
+    <div class="note">${occ ? 'AC dan lampu boleh menyala' : (occ === null ? '&nbsp;' : 'AC dan lampu dimatikan untuk hemat energi')}</div>
+    <div class="beats" aria-label="Gerakan PIR pada kiriman terakhir">${beats || ''}</div>
+  </article>`);
+  $("#metrics").innerHTML = html.join("");
+}
+
+function renderHero(r){
+  if (!r){
+    $("#heroTitle").textContent = "Menunggu data dari alat";
+    $("#heroText").textContent = "Begitu alat mengirim data pertama, ringkasan kondisi kelas muncul di sini.";
+    $("#scoreNum").textContent = "–"; const c = $("#scoreCat"); c.className = "cat na"; c.textContent = "Belum ada data";
+    return;
+  }
+  const s = comfort(r);
+  const parts = [];
+  const st = k => status(METRICS.find(m => m.key === k), r[k]);
+  const t = st("suhu"), h = st("kelembapan"), l = st("lux"), a = st("eco2");
+  const lvl = (st, agak, terlalu) => st === "warn" ? agak : terlalu;
+  parts.push(t === "ok" ? "suhu nyaman" : r.suhu > 26 ? lvl(t, "suhu agak panas", "suhu terlalu panas") : lvl(t, "suhu agak sejuk", "suhu terlalu sejuk"));
+  if (h !== "ok") parts.push(r.kelembapan > 60 ? lvl(h, "udara agak lembap", "udara terlalu lembap") : lvl(h, "udara agak kering", "udara terlalu kering"));
+  parts.push(a === "ok" ? "udara masih segar" : lvl(a, "udara mulai pengap", "udara pengap, perlu ventilasi"));
+  parts.push(l === "ok" ? "cahaya cukup" : r.lux < 300 ? lvl(l, "cahaya agak kurang", "cahaya kurang") : lvl(l, "cahaya agak berlebih", "cahaya berlebih"));
+  const occ = r.ada_orang ? "Kelas terisi" : "Kelas kosong";
+  $("#heroEyebrow").textContent = `${r.ruang || "Kelas"} · ${fDateTime(r.waktu)} WIB`;
+  $("#heroTitle").innerHTML = `${occ}, <em>${parts[0]}</em>.`;
+  $("#heroText").textContent = parts.slice(1).map((p,i)=> i===0 ? p[0].toUpperCase()+p.slice(1) : p).join(", ") + ".";
+  $("#scoreNum").textContent = s ?? "–";
+  const cat = s === null ? ["na","Belum ada data"] : s >= 80 ? ["ok","Nyaman"] : s >= 60 ? ["warn","Cukup"] : ["bad","Tidak nyaman"];
+  const c = $("#scoreCat"); c.className = "cat " + cat[0]; c.textContent = cat[1];
+}
+
+function renderHealth(r){
+  const sensors = [
+    { nm:"SHT40", addr:"I2C 0x44", ok:r?.sht_ok, err:r?.err_sht, detail: r ? `${fmt(r.suhu,2)} °C · ${fmt(r.kelembapan,1)} % RH` : "" },
+    { nm:"BH1750", addr:"I2C 0x23", ok:r?.bh_ok, err:r?.err_bh, detail: r ? `${fmt(r.lux,0)} lux` : "" },
+    { nm:"SGP30", addr:"I2C 0x58", ok:r?.sgp_ok, err:r?.err_sgp,
+      detail: r ? `H2 mentah ${fmt(r.raw_h2,0)} · ethanol mentah ${fmt(r.raw_ethanol,0)}<br>Baseline ${r.sgp_baseline_eco2 ? (r.sgp_baseline_dipulihkan ? "dipulihkan dari memori" : "tersimpan") : "belum ada (burn-in 12 jam)"}` : "" },
+    { nm:"OLED", addr:"I2C 0x3C", ok:r?.oled_ok, err:null, detail: r ? "Tampilan 5 halaman bergantian" : "" },
+    { nm:"PIR", addr:"GPIO27", ok: r ? true : undefined, err:null, detail: r ? `${r.pir_gerak ?? 0} gerakan di kiriman terakhir` : "" }
+  ];
+  $("#sensorList").innerHTML = `<h4 style="margin:0 0 4px;font-size:14px">Sensor</h4>` + sensors.map(s => {
+    const st = s.ok === undefined ? "na" : (s.ok ? "ok" : "bad");
+    const errTxt = (s.err !== null && s.err !== undefined) ? `<br><span class="hint">${s.err} kali gagal baca sejak menyala</span>` : "";
+    return `<div class="srow"><div class="nm">${s.nm}<small>${s.addr}</small></div><div class="detail">${s.detail || "–"}${errTxt}</div>
+      <span class="chip ${st}">${st === "ok" ? "Normal" : st === "bad" ? "Gagal" : "–"}</span></div>`;
+  }).join("");
+
+  $("#volts").innerHTML = RAILS.map(rl => {
+    const v = r ? r[rl.key] : null;
+    const st = (v === null || v === undefined) ? "na" : (v >= rl.ok[0] && v <= rl.ok[1] ? "ok" : "bad");
+    return `<div class="volt"><div class="vh"><div><b>${rl.name}</b><div class="hint">${rl.desc}</div></div>
+      <div style="text-align:right"><div class="vv mono">${fmt(v,2)}<span style="font-size:14px;color:var(--ink-3)"> V</span></div><span class="chip ${st}">${st === "ok" ? "Aman" : st === "bad" ? "Periksa" : "Belum diukur"}</span></div></div>
+      ${rulerHTML({name:rl.name}, v, rl.scale, rl.ok)}</div>`;
+  }).join("") + ((r && (r.v_3v3 === null || r.v_3v3 === undefined)) ? `<p class="hint" style="margin:2px 0 0">Tegangan kosong: pasang pembagi tegangan 10k+10k ke GPIO34/35 lalu set PAKAI_MONITOR_TEGANGAN = true di firmware.</p>` : "");
+
+  const rssiTxt = !r ? "–" : r.rssi === 0 ? "terputus" : `${r.rssi} dBm (${r.rssi > -60 ? "kuat" : r.rssi > -70 ? "baik" : r.rssi > -80 ? "lemah" : "sangat lemah"})`;
+  const up = r ? r.uptime_s : null;
+  const upTxt = up === null ? "–" : up < 3600 ? `${Math.floor(up/60)} mnt` : up < 86400 ? `${Math.floor(up/3600)} jam ${Math.floor(up%3600/60)} mnt` : `${Math.floor(up/86400)} hari ${Math.floor(up%86400/3600)} jam`;
+  $("#devInfo").innerHTML = [
+    ["Sinyal WiFi", rssiTxt], ["Menyala selama", upTxt],
+    ["Memori bebas", r ? `${fmt(r.free_heap/1024,0)} KB` : "–"], ["Siklus baca sensor", r ? `${r.baca_ms} ms` : "–"],
+    ["Firmware", esc(r?.fw_version || "–")], ["ID alat", esc(r?.device_id || "–")]
+  ].map(([k,v]) => `<div>${k}<b>${v}</b></div>`).join("");
+}
+
+/* ---------- grafik ---------- */
+const bandPlugin = {
+  id:"band",
+  beforeDatasetsDraw(chart, args, opts){
+    if (!opts || !opts.bands) return;
+    const { ctx, chartArea:{left,right,top,bottom} } = chart;
+    ctx.save();
+    for (const b of opts.bands){
+      const sc = chart.scales[b.axis]; if (!sc) continue;
+      const y1 = Math.max(top, sc.getPixelForValue(b.max)), y2 = Math.min(bottom, sc.getPixelForValue(b.min));
+      if (y2 <= y1) continue;
+      ctx.fillStyle = b.color; ctx.fillRect(left, y1, right-left, y2-y1);
+    }
+    ctx.restore();
+  }
+};
+Chart.register(bandPlugin);
+const charts = {};
+function downsample(rows, maxPts=500){
+  if (rows.length <= maxPts) return rows;
+  const size = Math.ceil(rows.length / maxPts), out = [];
+  for (let i = 0; i < rows.length; i += size){
+    const g = rows.slice(i, i+size), o = { ...g[g.length-1] };
+    for (const k of ["suhu","kelembapan","lux","eco2","tvoc","v_3v3","v_5v","rssi"]){
+      const vals = g.map(x => x[k]).filter(v => v !== null && v !== undefined);
+      o[k] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+    }
+    o.pir_gerak = g.reduce((a,x)=>a+(x.pir_gerak||0),0);
+    o.ada_orang = g.some(x => x.ada_orang);
+    out.push(o);
+  }
+  return out;
+}
+function baseOpts(hours){
+  const ink3 = cssVar("--ink-3"), line = cssVar("--line");
+  return {
+    responsive:true, maintainAspectRatio:false, animation:false, parsing:false, normalized:true,
+    interaction:{ mode:"index", intersect:false },
+    plugins:{ legend:{ display:true, position:"bottom", labels:{ boxWidth:10, boxHeight:10, color:ink3, font:{size:11} } },
+      tooltip:{ callbacks:{ title: items => items.length ? fDateTime(items[0].parsed.x) + " WIB" : "" } } },
+    scales:{ x:{ type:"linear", min: Date.now() - hours*3600e3, max: Date.now(), grid:{ color:line }, ticks:{ color:ink3, maxTicksLimit:6, font:{size:10},
+      callback: v => hours > 24 ? new Date(v).toLocaleDateString("id-ID",{timeZone:tz, day:"2-digit", month:"short"}) : fTime(v) } } }
+  };
+}
+function yAxis(pos, title, extra={}){
+  return { position:pos, grid:{ color: pos === "left" ? cssVar("--line") : "transparent" },
+    ticks:{ color:cssVar("--ink-3"), font:{size:10} }, title:{ display:!!title, text:title, color:cssVar("--ink-3"), font:{size:10} }, ...extra };
+}
+function series(rows, k){ return rows.filter(r => r[k] !== null && r[k] !== undefined).map(r => ({ x:new Date(r.waktu).getTime(), y:Number(r[k]) })); }
+function line(label, data, color, axis="y", dash){
+  return { label, data, yAxisID:axis, borderColor:color, backgroundColor:color, borderWidth:2, pointRadius:0, tension:.3, borderDash:dash || [], spanGaps: true };
+}
+function drawChart(id, cfg){
+  const el = document.getElementById(id);
+  if (charts[id]) charts[id].destroy();
+  const box = el.parentElement;
+  box.querySelector(".empty")?.remove();
+  const hasData = cfg.data.datasets.some(d => d.data.length);
+  el.style.display = hasData ? "block" : "none";
+  if (!hasData){ box.insertAdjacentHTML("beforeend", `<div class="empty">Belum ada data di rentang ini. Pilih rentang yang lebih panjang atau tunggu kiriman berikutnya.</div>`); return; }
+  charts[id] = new Chart(el, cfg);
+}
+function renderCharts(){
+  const rows = downsample(state.rows), H = state.hours;
+  const brand = cssVar("--brand"), warn = cssVar("--warn"), ok = cssVar("--ok"), bad = cssVar("--bad");
+  const band = c => hexA(c, .14);
+  const okBand = hexA(ok, .12);
+  const mk = (bands, extraScales, datasets, type="line") => {
+    const o = baseOpts(H); o.plugins.band = { bands }; Object.assign(o.scales, extraScales);
+    return { type, data:{ datasets }, options:o };
+  };
+  drawChart("cTemp", mk([{axis:"y",min:23,max:26,color:okBand}], { y:yAxis("left","°C"), y2:yAxis("right","% RH") },
+    [ line("Suhu", series(rows,"suhu"), bad), line("Kelembapan", series(rows,"kelembapan"), brand, "y2", [5,4]) ]));
+  drawChart("cLux", mk([{axis:"y",min:300,max:500,color:okBand}], { y:yAxis("left","lux",{beginAtZero:true}) },
+    [ line("Cahaya", series(rows,"lux"), warn) ]));
+  drawChart("cAir", mk([{axis:"y",min:400,max:1000,color:okBand}], { y:yAxis("left","ppm",{suggestedMin:400}), y2:yAxis("right","ppb",{beginAtZero:true}) },
+    [ line("eCO2", series(rows,"eco2"), brand), line("TVOC", series(rows,"tvoc"), warn, "y2", [5,4]) ]));
+  const pres = mk([], { y:yAxis("left","gerakan",{beginAtZero:true}), y2:yAxis("right","",{min:0,max:1.05,display:false}) }, [
+    { type:"bar", label:"Gerakan PIR", data:series(rows,"pir_gerak"), backgroundColor:brand, yAxisID:"y", barThickness: rows.length > 120 ? 2 : 6, order:2 },
+    { type:"line", label:"Kelas terisi", data:rows.map(r => ({ x:new Date(r.waktu).getTime(), y:r.ada_orang ? 1 : 0 })), borderColor:ok, backgroundColor:band(ok), fill:true, stepped:true, pointRadius:0, borderWidth:2.5, yAxisID:"y2", order:1 }
+  ], "bar");
+  drawChart("cPres", pres);
+  drawChart("cVolt", mk([{axis:"y",min:3.15,max:3.45,color:okBand},{axis:"y2",min:4.5,max:5.3,color:hexA(brand,.07)}],
+    { y:yAxis("left","3,3 V",{suggestedMin:3.0,suggestedMax:3.6}), y2:yAxis("right","5 V",{suggestedMin:4.2,suggestedMax:5.5}) },
+    [ line("Jalur 3,3 V", series(rows,"v_3v3"), ok), line("Jalur 5 V", series(rows,"v_5v"), bad, "y2") ]));
+  drawChart("cRssi", mk([], { y:yAxis("left","dBm",{suggestedMin:-90,suggestedMax:-40}) }, [ line("Sinyal WiFi", series(rows,"rssi").filter(p => p.y !== 0), brand) ]));
+  $("#histInfo").textContent = `${state.rows.length.toLocaleString("id-ID")} baris data dalam ${H >= 24 ? (H/24) + " hari" : H + " jam"} terakhir. Area hijau adalah rentang nilai ideal.`;
+}
+
+/* ---------- tabel & CSV ---------- */
+const TBL_COLS = [
+  ["waktu","Waktu (WIB)", r => fDateTime(r.waktu)], ["suhu","Suhu °C", r => fmt(r.suhu,2)], ["kelembapan","RH %", r => fmt(r.kelembapan,1)],
+  ["lux","Lux", r => fmt(r.lux,0)], ["eco2","eCO2", r => fmt(r.eco2,0)], ["tvoc","TVOC", r => fmt(r.tvoc,0)],
+  ["pir_gerak","Gerak", r => r.pir_gerak ?? "–"], ["ada_orang","Kelas", r => r.ada_orang ? "terisi" : "kosong"],
+  ["v_3v3","3,3 V", r => fmt(r.v_3v3,2)], ["v_5v","5 V", r => fmt(r.v_5v,2)], ["rssi","WiFi dBm", r => r.rssi || "–"]
+];
+function renderTable(){
+  const rows = state.rows.slice(-50).reverse();
+  $("#tbl thead").innerHTML = `<tr>${TBL_COLS.map(c => `<th scope="col">${c[1]}</th>`).join("")}</tr>`;
+  $("#tbl tbody").innerHTML = rows.length ? rows.map(r => `<tr>${TBL_COLS.map(c => `<td>${c[2](r)}</td>`).join("")}</tr>`).join("")
+    : `<tr><td colspan="${TBL_COLS.length}" style="text-align:center;font-family:var(--f-body);color:var(--ink-3);padding:28px">Belum ada data di rentang ini.</td></tr>`;
+}
+function downloadCSV(){
+  if (!state.rows.length) return;
+  const cols = Object.keys(state.rows[0]);
+  const esc = v => v === null || v === undefined ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
+  const csv = [cols.join(","), ...state.rows.map(r => cols.map(c => esc(r[c])).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv" }));
+  a.download = `smart-classroom_${(state.device||"alat").replace(/\W+/g,"-")}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- status live ---------- */
+function renderLive(){
+  const dot = $("#liveDot"), txt = $("#liveText");
+  if (state.lastError){ dot.className = "dot off"; txt.textContent = "Gagal memuat"; return; }
+  if (!state.latest){ dot.className = "dot"; txt.textContent = "Belum ada data"; return; }
+  const age = Date.now() - new Date(state.latest.waktu).getTime();
+  const limit = (CONFIG.kirimDetik * 2 + 20) * 1000;
+  dot.className = "dot " + (age <= limit ? "live" : age <= limit*5 ? "stale" : "off");
+  txt.textContent = (age <= limit ? "Live · " : "Data terakhir ") + ago(age) + (state.demo ? " · demo" : "");
+}
+function banner(html, kind=""){
+  const b = $("#banner");
+  if (!html){ b.className = "banner"; b.innerHTML = ""; return; }
+  b.className = "banner show " + kind; b.innerHTML = html;
+}
+
+/* =====================================================================
+   ALUR UTAMA
+   ===================================================================== */
+async function refreshLatest(){
+  try{
+    const r = await fetchLatest();
+    state.lastError = null;
+    const changed = !state.latest || !r || r.waktu !== state.latest.waktu;
+    state.latest = r;
+    if (changed && r){
+      renderHero(r); renderHealth(r);
+      await refreshHistory(false);   // ambil baris baru saja, lalu gambar ulang grafik
+    }
+    if (!state.demo) banner(r ? "" : `Tersambung ke Supabase, tapi belum ada data dari alat <b>${esc(state.device || "")}</b>. Pastikan firmware sudah mengirim (cek Serial Monitor: “Supabase: 1 baris terkirim”).`);
+  }catch(e){
+    state.lastError = e;
+    banner(`Tidak bisa mengambil data: <b>${esc(e.message)}</b>. Cek Project URL, anon key, nama tabel, dan apakah SQL sudah dijalankan.`, "err");
+  }
+  renderLive();
+}
+async function refreshHistory(full = true){
+  try{
+    if (full || !state.rows.length){
+      state.rows = await fetchHistory(state.hours);
+    } else {
+      const baru = await fetchNewer(state.rows[state.rows.length-1].waktu);
+      if (!baru.length) return;
+      state.rows.push(...baru);
+      const batas = Date.now() - state.hours*3600e3;
+      while (state.rows.length && new Date(state.rows[0].waktu).getTime() < batas) state.rows.shift();
+    }
+    renderCharts(); renderTable();
+    renderMetrics(state.latest, state.rows);
+  }catch(e){
+    state.lastError = e; renderLive();
+  }
+}
+async function start(){
+  state.cfg = loadCfg();
+  state.demo = !state.cfg.url || !state.cfg.key || store.get("sc_demo") === "1";
+  banner(state.demo ? `Mode demo: data contoh, bukan dari alat. <button class="btn" onclick="openSettings()">Sambungkan ke Supabase</button>` : "");
+  try{
+    const devs = await fetchDevices();
+    const sel = $("#deviceSel");
+    const saved = store.get("sc_device");
+    sel.innerHTML = devs.length ? devs.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join("") : `<option value="">Belum ada alat</option>`;
+    state.device = devs.includes(saved) ? saved : (devs[0] || null);
+    if (state.device) sel.value = state.device;
+    state.lastError = null;
+  }catch(e){
+    state.lastError = e;
+    banner(`Tidak bisa tersambung ke Supabase: <b>${esc(e.message)}</b>. Cek Project URL, anon key, dan nama tabel di menu Koneksi.`, "err");
+    renderLive(); renderMetrics(null, []); renderHealth(null); return;
+  }
+  await refreshLatest();   // kalau ada data, sekaligus memuat riwayat lengkap
+  $("#footInfo").textContent = state.demo ? "Mode demo" : `Supabase · tabel ${state.cfg.table}`;
+}
+
+/* ---------- interaksi ---------- */
+$("#rangeSeg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  [...$("#rangeSeg").children].forEach(x => x.setAttribute("aria-pressed", x === b));
+  state.hours = Number(b.dataset.h); refreshHistory();
+});
+$("#deviceSel").addEventListener("change", e => { state.device = e.target.value; store.set("sc_device", state.device); state.latest = null; state.rows = []; refreshLatest(); });
+$("#csvBtn").addEventListener("click", downloadCSV);
+$("#themeBtn").addEventListener("click", () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  const next = cur === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next; store.set("sc_theme", next);
+  renderCharts();
+});
+function openSettings(){
+  const c = loadCfg();
+  $("#fUrl").value = store.get("sc_demo") === "1" ? "" : c.url; $("#fKey").value = c.key; $("#fTable").value = c.table;
+  $("#dlg").showModal();
+}
+window.openSettings = openSettings;
+$("#settingsBtn").addEventListener("click", openSettings);
+$("#saveBtn").addEventListener("click", () => {
+  store.set("sc_url", $("#fUrl").value.trim()); store.set("sc_key", $("#fKey").value.trim());
+  store.set("sc_table", $("#fTable").value.trim() || "sensor_readings"); store.set("sc_demo", $("#fUrl").value.trim() ? "0" : "1");
+  $("#dlg").close(); state.rows = []; state.latest = null; start();
+});
+$("#demoBtn").addEventListener("click", () => { store.set("sc_demo","1"); $("#dlg").close(); state.rows = []; state.latest = null; start(); });
+
+const savedTheme = store.get("sc_theme"); if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+renderMetrics(null, []); renderHealth(null);
+start();
+setInterval(refreshLatest, CONFIG.refreshDetik * 1000);
+setInterval(renderLive, 1000);
+</script>
+</body>
+</html>
