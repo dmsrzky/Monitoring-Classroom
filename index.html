@@ -305,8 +305,8 @@ const METRICS = [
     lo:"", hi:"Banyak uap kimia di udara", okText:"Rendah" }
 ];
 const RAILS = [
-  { key:"v_3v3", name:"Jalur 3,3 V", desc:"SHT40, BH1750, SGP30, OLED", scale:[2.9,3.7], ok:[3.15,3.45] },
-  { key:"v_5v",  name:"Jalur 5 V",  desc:"PIR HC-SR501 (minimal 4,5 V)", scale:[4.0,5.6], ok:[4.5,5.3] }
+  { key:"v_3v3", name:"Jalur 3,3 V", desc:"SHT40, BH1750, SGP30", scale:[2.9,3.7], ok:[3.15,3.45] },
+  { key:"v_5v",  name:"Jalur 5 V",  desc:"PIR HC-SR501 (minimal 4,5 V), LCD 16x2", scale:[4.0,5.6], ok:[4.5,5.3] }
 ];
 
 /* ---------- utilitas ---------- */
@@ -528,7 +528,7 @@ function renderHealth(r){
     { nm:"BH1750", addr:"I2C 0x23", ok:r?.bh_ok, err:r?.err_bh, detail: r ? `${fmt(r.lux,0)} lux` : "" },
     { nm:"SGP30", addr:"I2C 0x58", ok:r?.sgp_ok, err:r?.err_sgp,
       detail: r ? `H2 mentah ${fmt(r.raw_h2,0)} · ethanol mentah ${fmt(r.raw_ethanol,0)}<br>Baseline ${r.sgp_baseline_eco2 ? (r.sgp_baseline_dipulihkan ? "dipulihkan dari memori" : "tersimpan") : "belum ada (burn-in 12 jam)"}` : "" },
-    { nm:"OLED", addr:"I2C 0x3C", ok:r?.oled_ok, err:null, detail: r ? "Tampilan 5 halaman bergantian" : "" },
+    { nm:"LCD 16x2", addr:"I2C 0x27", ok:r?.oled_ok, err:null, detail: r ? "Tampilan halaman bergantian tiap 3 detik" : "" },
     { nm:"PIR", addr:"GPIO27", ok: r ? true : undefined, err:null, detail: r ? `${r.pir_gerak ?? 0} gerakan di kiriman terakhir` : "" }
   ];
   $("#sensorList").innerHTML = `<h4 style="margin:0 0 4px;font-size:14px">Sensor</h4>` + sensors.map(s => {
